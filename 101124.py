@@ -41,7 +41,7 @@ def preprocess_data(df):
     # Ensure we have exactly 8 columns for each
     gate_force_cols = sorted(gate_force_cols)[:8]
     gate_angle_cols = sorted(gate_angle_cols)[:8]
-    gate_angle_vel_cols = sorted(gate_angle_cols)[:8]
+    gate_angle_vel_cols = sorted(gate_angle_vel_cols)[:8]
 
     # Ensure all required columns are present
     required_cols = ['Time'] + gate_force_cols + gate_angle_cols + gate_angle_vel_cols

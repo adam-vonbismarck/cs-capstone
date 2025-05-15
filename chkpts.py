@@ -10,6 +10,7 @@ OUTBOARD = 3.75  # In meters (update with your actual outboard length)
 OAR_LENGTH = INBOARD + OUTBOARD  # Total oar length
 SAMPLING_FREQ = 50  # Hz (data is at 50Hz)
 DELTA_TIME = 1 / SAMPLING_FREQ  # Time between samples (0.02 seconds)
+GRAVITY = 9.80665  # m/s^2
 
 # Threshold for detecting drive start (force threshold)
 FORCE_THRESHOLD = 30  # Newtons (adjust based on your data)
@@ -119,7 +120,8 @@ def compute_power_and_effective_length_per_piece(df, gate_force_cols, gate_angle
                 # Extract variables
                 times = stroke_df['Time'].values
                 angles_deg = stroke_df[angle_col].values
-                forces = stroke_df[force_col].values
+                # Convert raw force (kgf) to Newtons
+                forces = stroke_df[force_col].values * GRAVITY
 
                 # Check if we have enough data points
                 if len(angles_deg) < 2:
@@ -160,13 +162,16 @@ def compute_power_and_effective_length_per_piece(df, gate_force_cols, gate_angle
                 # Stroke duration (seconds)
                 stroke_duration = times[-1] - times[0]
 
-                # Effective length: gate angle covered during the stroke (degrees)
-                angle_start = angles_deg[0]
-                angle_end = angles_deg[-1]
-                effective_length = angle_end - angle_start
-                # Adjust if angle wrapping occurs
-                if effective_length < 0:
-                    effective_length += 360
+                # Effective Length Calculation: handle arc length for force > threshold
+                eff_threshold = 30.0  # N threshold for effective length
+                eff_mask = force_on_handle > eff_threshold
+                # use aligned radian angles (already trimmed after diff)
+                eff_angles_rad = angles_rad[eff_mask]
+                if len(eff_angles_rad) > 0:
+                    effective_length = eff_angles_rad.max() - eff_angles_rad.min()
+                    effective_length = np.rad2deg(effective_length)
+                else:
+                    effective_length = np.nan
 
                 # Accumulate totals
                 total_work += work
@@ -229,7 +234,7 @@ def main(input_file, output_folder, n_bkpts=6):
     print(f"Computation completed in {end_time - start_time:.2f} seconds.")
 
 # Define input and output paths
-input_file = "data/csv_9_10_1.csv"  # Replace with your actual data file path
+input_file = "../data_2/data/csv_9_10_1.csv"  # Replace with your actual data file path
 output_folder = "output"
 
 # Run the main workflow

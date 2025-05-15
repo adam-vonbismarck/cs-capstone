@@ -109,32 +109,35 @@ def compute_watts_and_length(df, change_points, gate_force_cols, gate_angle_cols
             force_col = gate_force_cols[idx]
             angle_col = gate_angle_cols[idx]
 
-            # Get force and angle data
-            force = section_df[force_col]
-            angles = section_df[angle_col]
-
-            # Handle speed (Handle Speed = Inboard * Angular Velocity * cos(angle))
-            angular_velocity = np.gradient(angles) * 50  # 50Hz sample rate
-            handle_speed = inboard * angular_velocity * np.cos(np.deg2rad(angles))
-
-            # Force on handle = oarlock_force * (outboard / oar_length)
-            handle_force = force * (outboard / oar_length)
+            # Handle speed and force: convert to proper units
+            inboard_m = inboard / 1000.0
+            outboard_m = outboard / 1000.0
+            oar_length_m = oar_length / 1000.0
+            angles_vals = section_df[angle_col].values
+            angles_rad = np.deg2rad(angles_vals)
+            angular_velocity = np.gradient(angles_rad) * 50  # rad/s
+            handle_speed = inboard_m * angular_velocity * np.cos(angles_rad)
+            force_vals = section_df[force_col].values
+            force_N = force_vals * 9.80665
+            handle_force = force_N * (outboard_m / oar_length_m)
 
             # Power = Force * Handle Speed (only when handle speed is positive)
             positive_speed_mask = handle_speed > 0
-            power = (handle_force[positive_speed_mask] * handle_speed[positive_speed_mask]).sum()
-            stroke_duration = len(handle_speed[positive_speed_mask]) / 50  # Duration in seconds
-            normalized_power = power / stroke_duration if stroke_duration > 0 else 0
+            instant_power = handle_force[positive_speed_mask] * handle_speed[positive_speed_mask]
+            instant_power = instant_power/10
+            average_power = np.mean(instant_power) if len(instant_power) > 0 else 0
 
-            watts[f"{force_col}_Watts"] = normalized_power
+            watts[f"{force_col}_Watts"] = average_power
 
-            # Compute effective length (angular displacement where force is applied)
-            force_threshold = force.max() * 0.1  # Threshold at 10% of max force
-            indices = force > force_threshold
-
-            # Calculate angular displacement over those indices
-            angles_above_threshold = section_df[angle_col][indices]
-            effective_length = angles_above_threshold.max() - angles_above_threshold.min() if not angles_above_threshold.empty else 0
+            # Compute effective length: handle arc length above threshold
+            eff_threshold = 20.0  # N threshold for effective length
+            eff_mask = handle_force > eff_threshold
+            eff_angles_rad = angles_rad[eff_mask]
+            if len(eff_angles_rad) > 0:
+                delta_rad = eff_angles_rad.max() - eff_angles_rad.min()
+                effective_length = np.rad2deg(inboard_m * delta_rad)
+            else:
+                effective_length = np.nan
 
             lengths[f"{angle_col}_EffectiveLength"] = effective_length
 
@@ -221,7 +224,7 @@ def main(input_file, output_folder):
     plot_normalized_data_with_change_points(df_normalized, change_points_speed)
 
 # Define input and output paths
-input_file = "data/csv_9_10_1.csv"  # Replace with your actual data file path
+input_file = "../data_2/data/csv_9_10_1.csv"  # Replace with your actual data file path
 output_folder = "change_points_output"
 
 # Run the main workflow

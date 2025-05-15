@@ -234,7 +234,7 @@ def main(input_file, output_folder, n_bkpts=6):
     print(f"Computation completed in {end_time - start_time:.2f} seconds.")
 
 # Define input and output paths
-input_file = "../data_2/data/csv_9_10_1.csv"  # Replace with your actual data file path
+input_file = "data/csv_9_10_1.csv"  # Replace with your actual data file path
 output_folder = "output"
 
 # Run the main workflow

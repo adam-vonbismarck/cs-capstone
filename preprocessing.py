@@ -232,7 +232,7 @@ def main(input_file, output_folder):
     print(f"Effective length per stroke saved to {length_output_file}")
 
 # Define input and output paths
-input_file = "../data_2/csv_10_4_2.csv"  # Replace with your actual data file path
+input_file = "data/csv_10_4_2.csv"  # Replace with your actual data file path
 output_folder = "change_points_output"
 
 # Run the main workflow

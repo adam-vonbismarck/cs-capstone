@@ -224,7 +224,7 @@ def main(input_file, output_folder):
     plot_normalized_data_with_change_points(df_normalized, change_points_speed)
 
 # Define input and output paths
-input_file = "../data_2/data/csv_9_10_1.csv"  # Replace with your actual data file path
+input_file = "data/csv_9_10_1.csv"  # Replace with your actual data file path
 output_folder = "change_points_output"
 
 # Run the main workflow

@@ -123,7 +123,6 @@ def extract_features(df, force_cols, angle_cols, vel_cols):
         feats.extend([f_dn[fcol].mean(), f_dn[fcol].std()])
         feats.extend([a_dn[angle_cols[i]].mean(), a_dn[angle_cols[i]].std()])
         feats.extend([v_dn[vel_cols[i]].mean(), v_dn[vel_cols[i]].std()])
-        # Stroke ratio from CP indicator (shared across rowers)
         feats.append(stroke_ratio)  # fraction of time in stroke
         features.append(feats)
     return np.array(features), np.array(targets)

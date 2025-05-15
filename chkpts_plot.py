@@ -8,18 +8,14 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Load the data efficiently
 def load_data(file_path):
-    # Read the CSV file with appropriate encoding and delimiter
     df = pd.read_csv(file_path, encoding='utf-16', delimiter='\t')
-    # Convert data to numeric, handling errors by setting invalid entries to NaN
     df = df.iloc[1:, :-1].apply(pd.to_numeric, errors='coerce')
-    # Drop rows with any NaN values
     df = df.dropna(how='any').reset_index(drop=True)
     return df
 
 # Preprocess data: Combine GateForceX and GateAngle columns and average
 def preprocess_data(df, interval_seconds=1):
-    # Assuming 'Time' is in milliseconds, convert to seconds if necessary
-    if df['Time'].max() > 1e6:  # If max time is large, assume it's in milliseconds
+    if df['Time'].max() > 1e6:
         df['Time'] = df['Time'] / 1000.0
 
     # Identify columns
@@ -33,16 +29,12 @@ def preprocess_data(df, interval_seconds=1):
         if col not in df.columns:
             raise ValueError(f"Column {col} is missing from the data.")
 
-    # Drop rows with NaN in critical columns
     df = df.dropna(subset=required_cols)
 
-    # Sort by 'Time' in case it's not sorted
     df = df.sort_values('Time').reset_index(drop=True)
 
-    # Assign each row to an interval
     df['TimeInterval'] = (df['Time'] // interval_seconds).astype(int)  # integer division
 
-    # Group by 'TimeInterval' and compute the mean
     aggregation_dict = {'Time': 'first', 'Speed': 'mean'}
     for col in gate_force_cols + gate_angle_cols + gate_angle_vel_cols:
         aggregation_dict[col] = 'mean'
@@ -93,8 +85,6 @@ def compute_watts_and_length(df, change_points, gate_force_cols, gate_angle_cols
     inboard = 1135  # mm
     oar_length = 3690  # mm
     outboard = oar_length - inboard  # mm
-    oarlock_force_catch = 30  # kgf at the catch (start of stroke)
-    oarlock_force_finish = 15  # kgf at the finish (end of stroke)
 
     for i in range(0, len(change_points) - 1, 2):
         start_idx = change_points[i]
@@ -155,16 +145,13 @@ def compute_watts_and_length(df, change_points, gate_force_cols, gate_angle_cols
 def plot_normalized_data_with_change_points(df, change_points_speed):
     plt.figure(figsize=(14, 7))
 
-    # Plot normalized Speed
     plt.plot(df['Time'].values, df['Speed'].values, label='Normalized Speed', color='blue', linewidth=2)
 
-    # Plot change points for Speed
     for cp in change_points_speed:
         if cp < len(df):
             cp_time = df.iloc[cp]['Time']
             plt.axvline(x=cp_time, color='red', linestyle='--', linewidth=1, alpha=0.7)
 
-    # Add title, labels, legend, and grid
     plt.title('Normalized Speed with Detected Change Points', fontsize=16)
     plt.xlabel('Time (s)', fontsize=14)
     plt.ylabel('Normalized Speed', fontsize=14)
@@ -176,41 +163,31 @@ def plot_normalized_data_with_change_points(df, change_points_speed):
 # Main function to orchestrate the workflow
 def main(input_file, output_folder):
     start_time = time.time()
-    # Load data
     df = load_data(input_file)
     print('Data successfully loaded.')
 
-    # Preprocess data
     df_processed = preprocess_data(df, interval_seconds=1)
     print("Data successfully preprocessed.")
 
-    # Normalize features for change point detection
     df_normalized = normalize_features(df_processed[['Speed', 'Time']].copy())
 
-    # Perform change point detection on Speed
     change_points_speed = detect_change_points_single(df_normalized['Speed'], n_bkps=6)
     print(f"Detected change points for Speed: {change_points_speed}")
 
-    # Save change points for Speed
     save_change_points(df_processed, change_points_speed, 'Speed', output_folder)
 
-    # Use the change points from Speed for sectioning
     change_points = change_points_speed
 
-    # Get the list of GateForceX, GateAngle, and GateAngleVel columns (per person)
     gate_force_cols = [col for col in df_processed.columns if 'GateForceX' in col]
     gate_angle_cols = [col for col in df_processed.columns if 'GateAngle' in col and 'Vel' not in col]
     gate_angle_vel_cols = [col for col in df_processed.columns if 'GateAngleVel' in col]
 
-    # Ensure columns are sorted consistently
     gate_force_cols.sort()
     gate_angle_cols.sort()
     gate_angle_vel_cols.sort()
 
-    # Compute watts and effective length per person in each section
     watts_df, length_df = compute_watts_and_length(df_processed, change_points, gate_force_cols, gate_angle_cols, gate_angle_vel_cols)
 
-    # Combine watts and effective length into one DataFrame
     results_df = pd.concat([watts_df.reset_index(drop=True), length_df.reset_index(drop=True)], axis=1)
 
     # Print the results
@@ -220,11 +197,10 @@ def main(input_file, output_folder):
     end_time = time.time()
     print(f"Change point detection and computation completed in {end_time - start_time:.2f} seconds.")
 
-    # Plot the normalized data with change points
     plot_normalized_data_with_change_points(df_normalized, change_points_speed)
 
 # Define input and output paths
-input_file = "data/csv_9_10_1.csv"  # Replace with your actual data file path
+input_file = "data/csv_9_10_1.csv"
 output_folder = "change_points_output"
 
 # Run the main workflow
